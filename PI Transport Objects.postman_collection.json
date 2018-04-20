@@ -1,0 +1,287 @@
+{
+	"info": {
+		"_postman_id": "f49f8f0f-98f8-49e8-a519-37541ead8572",
+		"name": "PI Transport Objects",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Get Imported Transports for a date range",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "fc8399de-1845-4bc6-b75e-8f054c193541",
+						"type": "text/javascript",
+						"exec": [
+							"var toDate = Date.now();",
+							"//Substract time in milli seconds to get a range",
+							"var fromDate = toDate - 2592000000;",
+							"",
+							"pm.globals.set(\"toDate\", toDate);",
+							"pm.globals.set(\"fromDate\", fromDate);",
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "1349544c-a6f6-4c3e-b176-f50b54ae1734",
+						"type": "text/javascript",
+						"exec": [
+							"var triggerNext = false;",
+							"var transportDetails = [];",
+							"//get and set messageId",
+							"if(responseCode.code == 200)",
+							"{",
+							"    // Convert XML respose to JSON.",
+							"    var jsonData = xml2Json(responseBody);",
+							"",
+							"    // Get all attributes from the response body",
+							"    var messageDetails = jsonData[\"instance\"][\"attribute\"];",
+							"    ",
+							"    // Loop through attributes in the response",
+							"    messageDetails.forEach(function (obj){",
+							"    ",
+							"      var message = obj[\"$\"][\"name\"]",
+							"      // Get the read_transport_log method output from MethodOutput attribute",
+							"      if(message == \"MethodOutput\"){",
+							"          var output = obj[\"value\"][\"instance\"][\"attribute\"];",
+							"          output.forEach(function (obj1){",
+							"              var name = obj1[\"$\"][\"name\"];",
+							"            // Get return variable",
+							"              if(name == \"Return\"){",
+							"                    var mapReturn = obj1[\"value\"][\"_\"];",
+							"                    var outputJson = xml2Json(mapReturn);",
+							"                    var changeList = outputJson[\"Response\"][\"Transport\"];",
+							"                    // If more than one Transport Id is inculded in reponse body then it comes as an array",
+							"                    if(changeList.length > 1){",
+							"                        changeList.forEach(function (obj2){",
+							"                            var changeGuid = obj2[\"$\"][\"id\"];",
+							"                            var transportName = obj2[\"transportListName\"]",
+							"                            transportDetails.push({\"transportName\" : obj2[\"transportListName\"], ",
+							"                                                   \"transportId\": changeGuid,",
+							"                                                   \"user\": obj2[\"user\"]",
+							"                                                    });",
+							"                            triggerNext = true;",
+							"                            tests[\"Transport Id: \" + changeGuid] = 1 === 1;",
+							"                        })",
+							"                    }else {",
+							"                        var changeGuid = changeList[\"$\"][\"id\"];",
+							"                        triggerNext = true;",
+							"                        tests[\"Transport Id: \" + changeGuid] = 1 === 1;",
+							"                        transportDetails.push({\"transportName\" : changeList[\"transportListName\"], ",
+							"                                               \"transportId\": changeGuid,",
+							"                                               \"user\": changeList[\"user\"]",
+							"                            ",
+							"                        });",
+							"                    }",
+							"                    pm.globals.set(\"loopCount\", 0);",
+							"                    // Set a global variable with transport details to use in the next request to get the object details",
+							"                    pm.globals.set(\"transportDetails\", transportDetails);",
+							"              }",
+							"          })",
+							"      }",
+							"    })        ",
+							"}",
+							"",
+							"// If any transports returned for a give date range then trigger the next request to get the object details else end the chain",
+							"if(Boolean(triggerNext)){",
+							"    pm.globals.unset(\"transportObjects\")",
+							"    postman.setNextRequest(\"Get Objects of Change List using ChangeList Guid\");",
+							"}else{",
+							"    postman.setNextRequest(null);",
+							"}",
+							""
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{authorization}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "text/xml"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\r\n<instance typeid=\"com.sap.aii.util.hmi.core.msg.HmiRequest\"><attribute isleave=\"true\" leave_typeid=\"string\" name=\"ClientId\"><value index=\"0\" isnull=\"false\">1baff32c440311e89289025041000001</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"ClientLanguage\"><value index=\"0\" isnull=\"false\">EN</value></attribute><attribute isleave=\"false\" name=\"ClientLevel\"><value index=\"0\" isnull=\"false\"><instance typeid=\"com.sap.aii.util.applcomp.ApplCompLevel\"><attribute isleave=\"true\" leave_typeid=\"string\" name=\"Release\"><value index=\"0\" isnull=\"false\">7.50</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"SupportPackage\"><value index=\"0\" isnull=\"false\">10</value></attribute></instance></value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"ClientPassword\"><value index=\"0\" isnull=\"false\">dummy</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"ClientUser\"><value index=\"0\" isnull=\"false\">dummy</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"ControlFlag\"><value index=\"0\" isnull=\"false\">0</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"HmiSpecVersion\"><value index=\"0\" isnull=\"false\">1.0</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"MethodId\"><value index=\"0\" isnull=\"false\">read_transport_log</value></attribute><attribute isleave=\"false\" name=\"MethodInput\"><value index=\"0\" isnull=\"false\"><instance typeid=\"com.sap.aii.util.hmi.api.HmiMethodInput\"><attribute isleave=\"false\" name=\"Parameters\"><value index=\"0\" isnull=\"false\"><instance typeid=\"com.sap.aii.util.hmi.core.gdi2.EntryStringString\"><attribute isleave=\"true\" leave_typeid=\"string\" name=\"Key\"><value index=\"0\" isnull=\"false\">p_from_date</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"Value\"><value index=\"0\" isnull=\"false\">{{fromDate}}</value></attribute></instance></value><value index=\"1\" isnull=\"false\"><instance typeid=\"com.sap.aii.util.hmi.core.gdi2.EntryStringString\"><attribute isleave=\"true\" leave_typeid=\"string\" name=\"Key\"><value index=\"0\" isnull=\"false\">p_to_date</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"Value\"><value index=\"0\" isnull=\"false\">{{toDate}}</value></attribute></instance></value><value index=\"2\" isnull=\"false\"><instance typeid=\"com.sap.aii.util.hmi.core.gdi2.EntryStringString\"><attribute isleave=\"true\" leave_typeid=\"string\" name=\"Key\"><value index=\"0\" isnull=\"false\">p_direction</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"Value\"><value index=\"0\" isnull=\"false\">import</value></attribute></instance></value></attribute></instance></value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"RequestId\"><value index=\"0\" isnull=\"false\">1baff32d440311e8b10e025041000001</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"RequiresSession\"><value index=\"0\" isnull=\"false\">true</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"ServerApplicationId\"><value index=\"0\" isnull=\"false\">{{ServerApplicationId}}</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"ServerLogicalSystemName\"><value index=\"0\" isnull=\"true\"></value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"ServiceId\"><value index=\"0\" isnull=\"false\">transportservice</value></attribute></instance>\r\n"
+				},
+				"url": {
+					"raw": "https://{{system}}/rep/transportservice/int?container=any",
+					"protocol": "https",
+					"host": [
+						"{{system}}"
+					],
+					"path": [
+						"rep",
+						"transportservice",
+						"int"
+					],
+					"query": [
+						{
+							"key": "container",
+							"value": "any"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Objects of Change List using ChangeList Guid",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "0828e2bc-fb9c-4e1a-be17-3b07b61d682f",
+						"type": "text/javascript",
+						"exec": [
+							"console.log(pm.globals.get(\"transportId\"));",
+							"var transportObjects = pm.globals.get(\"transportObjects\");",
+							"if( transportObjects === undefined){",
+							"    transportObjects = [];",
+							"}",
+							"if(responseCode.code == 200)",
+							"{",
+							"    var jsonData = xml2Json(responseBody);",
+							"    ",
+							"    var messageDetails = jsonData[\"instance\"][\"attribute\"];",
+							"    ",
+							"    messageDetails.forEach(function (obj){",
+							"      var message = obj[\"$\"][\"name\"]",
+							"      if(message == \"MethodOutput\"){",
+							"          var output = obj[\"value\"][\"instance\"][\"attribute\"];",
+							"          output.forEach(function (obj1){",
+							"              var name = obj1[\"$\"][\"name\"];",
+							"              if(name == \"Return\"){",
+							"                    var mapReturn = obj1[\"value\"][\"_\"];",
+							"                    var outputJson = xml2Json(mapReturn);",
+							"                    var changeList = outputJson[\"Transport\"][\"Objects\"][\"Transported\"][\"Object\"];",
+							"                    if(changeList.length > 1){",
+							"                        changeList.forEach(function (obj2){",
+							"                        var objType = obj2[\"type\"];",
+							"                            var objectName = obj2[\"name\"];",
+							"                            var details = pm.globals.get(\"details\");",
+							"                            //Store required details into a JSON array",
+							"                            transportObjects.push({\"name\" : obj2[\"name\"],",
+							"                                                    \"namespace\" : obj2[\"namespace\"],",
+							"                                                    \"swcv\" : obj2[\"swcv\"],",
+							"                                                    \"swcvCaption\" : obj2[\"swcvCaption\"],",
+							"                                                    \"transportName\" : details[\"transportName\"],",
+							"                                                    \"transportId\" : details[\"transportId\"],",
+							"                                                    \"userId\" : details[\"user\"]",
+							"                                });",
+							"                                tests[objectName] = 1 === 1;",
+							"                        })",
+							"                    }else {",
+							"                        var objType = changeList[\"type\"];",
+							"                            var objectName = changeList[\"name\"];",
+							"                            var details = pm.globals.get(\"details\");",
+							"                            //Store required details into a JSON array",
+							"                            transportObjects.push({\"name\" : changeList[\"name\"],",
+							"                                                   \"namespace\" : changeList[\"namespace\"],",
+							"                                                   \"swcv\" : changeList[\"swcv\"],",
+							"                                                   \"swcvCaption\" : changeList[\"swcvCaption\"],",
+							"                                                   \"transportName\" : details[\"transportName\"],",
+							"                                                   \"transportId\" : details[\"transportId\"],",
+							"                                                    \"userId\" : details[\"user\"]",
+							"                                });",
+							"                            tests[objectName] = 1 === 1;  ",
+							"                        }",
+							"              }",
+							"          })",
+							"      }",
+							"    })        ",
+							"}",
+							"",
+							"//This variable contains all the details about the objects transported (Currently filtering only mapping objects)",
+							"console.log(transportObjects);",
+							"pm.globals.set(\"transportObjects\", transportObjects);",
+							"var loopCount = pm.globals.get(\"loopCount\"),",
+							"    transportDetails = pm.globals.get(\"transportDetails\")",
+							"//Send same request until loopCount reaches length of guids",
+							"if(loopCount < transportDetails.length){",
+							"    postman.setNextRequest(\"Get Objects of Change List using ChangeList Guid\");",
+							"}else {",
+							"    pm.globals.unset(\"loopCount\");",
+							"    pm.globals.unset(\"details\");",
+							"    postman.setNextRequest(null);",
+							"}",
+							""
+						]
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "f006925e-91a7-4c3b-a286-3327560c6aca",
+						"type": "text/javascript",
+						"exec": [
+							"// Import both the global variables exported from pervious request",
+							"var transportDetails = pm.globals.get(\"transportDetails\");",
+							"var loopCount = pm.globals.get(\"loopCount\");",
+							"// Replace XXXXXXX with your PI system host name",
+							"// var ServerApplicationId = \"XXXXXXX\"",
+							" ",
+							"",
+							"//Loop through guids using loopCount",
+							"var details = transportDetails[loopCount];",
+							"var transportId = details[\"transportId\"];",
+							"",
+							"console.log(transportId);",
+							"//Increase the loop count used to read the guids from array",
+							"loopCount = loopCount + 1;",
+							"pm.globals.set(\"transportId\", transportId);",
+							"pm.globals.set(\"loopCount\", loopCount);",
+							"pm.globals.set(\"details\", details);"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "text/xml"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{authorization}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\r\n<instance typeid=\"com.sap.aii.util.hmi.core.msg.HmiRequest\"><attribute isleave=\"true\" leave_typeid=\"string\" name=\"ClientId\"><value index=\"0\" isnull=\"false\">3c17dea91c4911e88f00025041000001</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"ClientLanguage\"><value index=\"0\" isnull=\"false\">EN</value></attribute><attribute isleave=\"false\" name=\"ClientLevel\"><value index=\"0\" isnull=\"false\"><instance typeid=\"com.sap.aii.util.applcomp.ApplCompLevel\"><attribute isleave=\"true\" leave_typeid=\"string\" name=\"Release\"><value index=\"0\" isnull=\"false\">7.50</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"SupportPackage\"><value index=\"0\" isnull=\"false\">2</value></attribute></instance></value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"ClientPassword\"><value index=\"0\" isnull=\"false\">dummy</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"ClientUser\"><value index=\"0\" isnull=\"false\">dummy</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"ControlFlag\"><value index=\"0\" isnull=\"false\">0</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"HmiSpecVersion\"><value index=\"0\" isnull=\"false\">1.0</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"MethodId\"><value index=\"0\" isnull=\"false\">read_transport_log_details</value></attribute><attribute isleave=\"false\" name=\"MethodInput\"><value index=\"0\" isnull=\"false\"><instance typeid=\"com.sap.aii.util.hmi.api.HmiMethodInput\"><attribute isleave=\"false\" name=\"Parameters\"><value index=\"0\" isnull=\"false\"><instance typeid=\"com.sap.aii.util.hmi.core.gdi2.EntryStringString\"><attribute isleave=\"true\" leave_typeid=\"string\" name=\"Key\"><value index=\"0\" isnull=\"false\">TransportId</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"Value\"><value index=\"0\" isnull=\"false\">{{transportId}}</value></attribute></instance></value></attribute></instance></value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"RequestId\"><value index=\"0\" isnull=\"false\">3c17deaa1c4911e8a4ba025041000001</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"RequiresSession\"><value index=\"0\" isnull=\"false\">true</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"ServerApplicationId\"><value index=\"0\" isnull=\"false\">{{ServerApplicationId}}</value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"ServerLogicalSystemName\"><value index=\"0\" isnull=\"true\"></value></attribute><attribute isleave=\"true\" leave_typeid=\"string\" name=\"ServiceId\"><value index=\"0\" isnull=\"false\">transportservice</value></attribute></instance>"
+				},
+				"url": {
+					"raw": "https://{{system}}/rep/transportservice/int?container=any",
+					"protocol": "https",
+					"host": [
+						"{{system}}"
+					],
+					"path": [
+						"rep",
+						"transportservice",
+						"int"
+					],
+					"query": [
+						{
+							"key": "container",
+							"value": "any"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
